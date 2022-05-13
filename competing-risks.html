@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Competing Risk Analysis</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="LAN Wang" />
+    <meta name="date" content="2022-05-13" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Competing Risk Analysis
+]
+.subtitle[
+## <br/>Fine-Gray model
+]
+.author[
+### LAN Wang
+]
+.institute[
+### Palan, PBC
+]
+.date[
+### 2022-05-13
+]
+
+---
+
+class: inverse, center, middle
+
+
+
+
+# Recap
+### Survival analysis
+
+---
+### Recap
+
+- Survival analysis is known as "**time-to-event**" analysis. (e.g. hepatitis diagnosis to death)
+&lt;br&gt;
+&lt;br&gt;
+--
+![](pic_1.png)&lt;!-- --&gt;
+--
+
+- Survival time is of particular interest (DM project is a nice example of why survival analysis is not performed; however, cancer studies are quite the opposite).
+
+--
+
+- Time to ...
+&lt;br&gt;
+&lt;br&gt;
+Death
+&lt;br&gt;
+&lt;br&gt;
+--
+Device/ drug failure
+&lt;br&gt;
+&lt;br&gt;
+--
+Re-admission
+--
+&lt;br&gt;
+&lt;br&gt;
+...
+
+---
+
+# Censoring
+
+**Censoring** occurs when we don't know the exact time-to-event for an included observation.
+
+--
+
+1. LEFT: we know that time-to-event is LESS than some value. (Young women enrolled in the study who have already menstruated)
+
+--
+
+2. INTERVAL: we know that time-to-event is BETWEEN two values. (Lesion occurrence is identified by a specialist at regular checkups)
+
+--
+
+3. RIGHT: we know that time-to-event is GREATER than some value. (MOST COMMON, usually consider patients still alive at end of study; or patients lost to follow up)
+
+--
+
+![](pic_2.png)
+---
+# Life Tables
+![](pic_3.png)
+
+---
+
+# Keplan Meier Curves
+
+![](pic_4.jpg)
+---
+# KM survival curves in R
+
+
+```r
+library(survival)
+library(survminer)
+
+# load in data
+time &lt;- c(4,6,8,11,15,15,20,20,25,31)
+status &lt;- c(1,1,0,1,1,1,1,0,1,0)
+sex &lt;- c(1,1,1,2,1,1,2,2,2,2)
+df &lt;- data.frame(time, status, sex)
+
+# table and curves using log-log
+fit &lt;- survfit(Surv(time, status) ~ 1, conf.type = "log-log", df)
+summary(fit)
+ggsurvplot(fit, df)
+
+# by sex
+fit2 &lt;- survfit(Surv(time, status) ~ sex, conf.type = "log-log", df)
+*ggsurvplot(fit2, data = df, pval = TRUE, conf.int = TRUE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata", surv.median.line = "hv", ggtheme = theme_bw(), palette = c("#E7B800", "#2E9FDF"))
+ 
+# Logrank test
+*survdiff(Surv(time, status) ~ sex, data = df)
+```
+---
+# Logrank test
+
+The logrank test assesses whether the KM survival curves from two subgroups are **significantly different**.
+
+![](competing-risks_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+class: inverse, center, middle
+# Competing risk analysis
+
+---
+# Background
+
+A distinctive feature of survival data is the concept of censoring. In a follow-up study, subjects who drop out are censored, because they are typically lost to follow-up and the time of the occurrence of their event is unknown. All that is known is that their event time occurred after the time at which they were censored. If the study had been prolonged (or if subjects had not dropped out), eventually the outcome of interest would have been observed to occur for all subjects. 
+
+Conventional survival analysis make the important assumption of **independent or non-informative censoring**. This means that, at a given point in time, subjects who remain under follow-up have the same future risk for the occurrence of the event as those subjects no longer being followed (either because of censoring or study dropout), as if losses to follow-up were random and thus non-informative.
+
+---
+class: inverse, center, middle
+# But...
+
+---
+
+# Competing risk
+
+- A competing risk is an event whose occurrence precludes the occurrence of the primary event of interest. For instance, in a study in which the primary outcome was time to death attributable to a cardiovascular cause, death attributable to a non-cardiovascular cause serves as a competing event. 
+
+- A subject who dies of cancer is no longer at risk of death attributable to cardiovascular causes. Regardless of how long the duration of follow-up is extended, a subject will not be observed to die of cardiovascular causes once he or she has died of cancer. 
+
+- Conventional statistical methods for the analysis of survival data assume that competing risks are absent. Two competing risks are said to be independent if information about a subject’s risk of experiencing 1 type of event provides no information about the subject’s risk of experiencing the other type of event. 
+
+---
+class: center, middle
+![](pic_6.jpeg)
+
+---
+class: inverse, center, middle
+The CIF is equivalent to 1-KM estimator when there is no competing event. When there is competing event, the CIF differs from 1-KM estimator in that it uses overall survival function S(t) that counts failures from competing events in addition to the event of interest.
+---
+class: center, middle
+![](pic_7.jpeg)
+---
+# Solutions for Competing Risk Analysis
+
+- **Cumulative incidence functions (CIFs)** should be used to estimate the incidence of each of the different types of competing risks. Do not use the Kaplan-Meier estimate of the survival function for this purpose.
+
+- Researchers need to decide whether the research objective is on addressing etiologic questions or on estimating incidence or predicting prognosis.
+
+- Use the **Fine-Gray subdistribution hazard model** when the focus is on estimating incidence or predicting prognosis in the presence of competing risks.
+
+- Use the **cause-specific hazard model** when the focus is on addressing etiologic questions.
+
+- In some settings, both types of regression models should be estimated for each of the competing risks to permit a full understanding of the effect of covariates on the incidence and the rate of occurrence of each outcome.
+
+---
+class: inverse, center, middle
+# [Example](https://www.ahajournals.org/doi/10.1161/circulationaha.115.017719#d754422e1)
+
+---
+
+class: center, middle
+
+# Thanks!
+
+.footnote[
+
+[Reference1](https://www.ahajournals.org/doi/10.1161/circulationaha.115.017719#d754422e1)
+
+[Reference2](https://www.publichealth.columbia.edu/research/population-health-methods/competing-risk-analysis)
+]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
